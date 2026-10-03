@@ -1,6 +1,7 @@
 import os
 import json
 import shutil
+import sys
 import signal
 import subprocess
 import threading
@@ -159,48 +160,110 @@ class FamilySafeCutter:
     # FFMPEG
     # ========================================================
 
+    def get_assets_dir(self):
+        """
+        Returns the assets directory.
+
+        Normal Python execution:
+
+            FamilySafeCutter/
+            ├── FamilySafeCutterV4.py
+            └── assets/
+                ├── ffmpeg.exe
+                └── ffprobe.exe
+
+        PyInstaller --onedir:
+
+            FamilySafeCutter/
+            ├── FamilySafeCutter.exe
+            └── _internal/
+                └── assets/
+                    ├── ffmpeg.exe
+                    └── ffprobe.exe
+
+        PyInstaller --onefile:
+
+            PyInstaller extracts bundled files into
+            sys._MEIPASS at runtime.
+        """
+
+        # --------------------------------------------
+        # PyInstaller
+        # --------------------------------------------
+
+        if getattr(sys, "frozen", False):
+
+            bundle_dir = getattr(
+                sys,
+                "_MEIPASS",
+                os.path.dirname(
+                    sys.executable
+                )
+            )
+
+            return os.path.join(
+                bundle_dir,
+                "assets"
+            )
+
+        # --------------------------------------------
+        # Normal Python execution
+        # --------------------------------------------
+
+        return os.path.join(
+            os.path.dirname(
+                os.path.abspath(__file__)
+            ),
+            "assets"
+        )
+
     def find_executable(self, name):
 
-        exe = shutil.which(name)
+        """
+        Find FFmpeg/FFprobe ONLY from the application's
+        bundled assets directory.
 
-        if exe:
-            return exe
+        The user does not need FFmpeg installed.
+        """
 
-        candidates = []
+        exe_name = (
+            name
+            if name.lower().endswith(".exe")
+            else name + ".exe"
+        )
 
-        if name == "ffmpeg":
+        assets_dir = self.get_assets_dir()
 
-            candidates = [
-                r"C:\ffmpeg\bin\ffmpeg.exe",
-                r"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
-                r"C:\Program Files (x86)\ffmpeg\bin\ffmpeg.exe",
-            ]
+        executable = os.path.join(
+            assets_dir,
+            exe_name
+        )
 
-        elif name == "ffprobe":
+        if os.path.isfile(executable):
 
-            candidates = [
-                r"C:\ffmpeg\bin\ffprobe.exe",
-                r"C:\Program Files\ffmpeg\bin\ffprobe.exe",
-                r"C:\Program Files (x86)\ffmpeg\bin\ffprobe.exe",
-            ]
-
-        for path in candidates:
-
-            if os.path.isfile(path):
-                return path
+            return executable
 
         return None
 
     def find_ffmpeg(self):
 
         if self.ffmpeg_override:
-            return self.ffmpeg_override
 
-        return self.find_executable("ffmpeg")
+            if os.path.isfile(
+                self.ffmpeg_override
+            ):
+
+                return self.ffmpeg_override
+
+        return self.find_executable(
+            "ffmpeg"
+        )
 
     def find_ffprobe(self):
 
-        return self.find_executable("ffprobe")
+        return self.find_executable(
+            "ffprobe"
+        )
 
     def check_ffmpeg(self):
 
@@ -216,7 +279,7 @@ class FamilySafeCutter:
         else:
 
             self.ffmpeg_status.set(
-                "FFMPEG  ● OFFLINE"
+                "FFMPEG  ● MISSING"
             )
 
         if ffprobe:
@@ -228,7 +291,7 @@ class FamilySafeCutter:
         else:
 
             self.ffprobe_status.set(
-                "FFPROBE  ● OFFLINE"
+                "FFPROBE  ● MISSING"
             )
 
         if ffmpeg and ffprobe:
@@ -237,28 +300,13 @@ class FamilySafeCutter:
                 "SYSTEM READY // WAITING FOR INPUT"
             )
 
-    def choose_ffmpeg(self):
-
-        path = filedialog.askopenfilename(
-            title="Select ffmpeg.exe",
-            filetypes=[
-                ("FFmpeg executable", "ffmpeg.exe"),
-                ("Executable", "*.exe"),
-                ("All files", "*.*"),
-            ],
-        )
-
-        if path:
-
-            self.ffmpeg_override = path
-
-            self.ffmpeg_status.set(
-                "FFMPEG  ● CUSTOM"
-            )
+        else:
 
             self.status_var.set(
-                "CUSTOM FFMPEG PATH LOADED"
+                "FFMPEG ASSETS MISSING"
             )
+        
+    
 
     # ========================================================
     # STYLE
