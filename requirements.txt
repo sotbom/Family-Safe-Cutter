@@ -1,0 +1,15 @@
+# requirements.txt
+
+# Python standard library:
+# json
+# os
+# shutil
+# signal
+# subprocess
+# threading
+# queue
+# tempfile
+# time
+
+# tkinter is provided by the Python/OS installation.
+# Linux: install python3-tk separately.
