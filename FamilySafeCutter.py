@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 
-APP_TITLE = "FAMILY-SAFE CUTTER // V4"
+APP_TITLE = "FAMILY-SAFE CUTTER - V1.1"
 
 SUPPORTED_VIDEO_TYPES = (
     "*.mkv *.mp4 *.mov *.m4v *.webm *.avi *.ts"

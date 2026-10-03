@@ -95,7 +95,7 @@ jobs:
             --icon "icon.ico" ^
             --add-data "assets;assets" ^
             --add-data "icon.ico;." ^
-            FamilySafeCutterV4.py
+            FamilySafeCutter.py
 
       # ==================================================
       # VERIFY PYINSTALLER OUTPUT
