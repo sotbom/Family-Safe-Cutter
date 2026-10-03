@@ -52,6 +52,7 @@ class FamilySafeCutter:
 
         self.root = root
         self.root.title(APP_TITLE)
+        self.root.iconbitmap(self.get_icon_path())
 
         self.root.geometry("1120x850")
         self.root.minsize(900, 680)
@@ -113,6 +114,28 @@ class FamilySafeCutter:
     # ========================================================
     # WINDOWS / SUBPROCESS HELPERS
     # ========================================================
+
+    @staticmethod
+    def get_icon_path():
+
+        if getattr(sys, "frozen", False):
+
+            bundle_dir = getattr(
+                sys,
+                "_MEIPASS",
+                os.path.dirname(sys.executable)
+            )
+
+        else:
+
+            bundle_dir = os.path.dirname(
+                os.path.abspath(__file__)
+            )
+
+        return os.path.join(
+            bundle_dir,
+            "icon.ico"
+        )
 
     @staticmethod
     def hidden_startupinfo():

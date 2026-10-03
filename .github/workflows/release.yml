@@ -49,6 +49,11 @@ jobs:
             exit /b 1
           )
 
+          if not exist "icon.ico" (
+            echo ERROR: icon.ico was not found.
+            exit /b 1
+          )
+
           echo.
           echo FFmpeg assets found:
           dir assets\ffmpeg.exe
@@ -87,7 +92,9 @@ jobs:
             --onedir ^
             --windowed ^
             --name FamilySafeCutter ^
+            --icon "icon.ico" ^
             --add-data "assets;assets" ^
+            --add-data "icon.ico;." ^
             FamilySafeCutterV4.py
 
       # ==================================================
@@ -122,6 +129,14 @@ jobs:
           )
 
           echo.
+          echo Checking bundled application icon...
+
+          if not exist "dist\FamilySafeCutter\_internal\icon.ico" (
+            echo ERROR: Bundled icon.ico was not found.
+            exit /b 1
+          )
+
+          echo.
           echo ==========================================
           echo BUILD VERIFICATION SUCCESSFUL
           echo ==========================================
@@ -137,6 +152,10 @@ jobs:
           echo.
           echo FFprobe:
           dir "dist\FamilySafeCutter\_internal\assets\ffprobe.exe"
+
+          echo.
+          echo Application icon:
+          dir "dist\FamilySafeCutter\_internal\icon.ico"
 
       # ==================================================
       # CREATE ZIP
