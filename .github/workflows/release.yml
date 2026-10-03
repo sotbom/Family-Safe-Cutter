@@ -1,44 +1,191 @@
-name: Build and Release FamilySafeCutter
+name: FamilySafeCutter Windows Release
 
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "v*"
+
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build:
+
+  build-windows:
+
+    name: Build Windows x64
+
     runs-on: windows-latest
 
     steps:
+
+      # ==================================================
+      # CHECKOUT
+      # ==================================================
+
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      # ==================================================
+      # VERIFY LFS BINARIES
+      # ==================================================
+
+      - name: Verify FFmpeg assets
+        shell: cmd
+        run: |
+          echo Checking FFmpeg binaries...
+
+          if not exist "assets\ffmpeg.exe" (
+            echo ERROR: assets\ffmpeg.exe was not found.
+            exit /b 1
+          )
+
+          if not exist "assets\ffprobe.exe" (
+            echo ERROR: assets\ffprobe.exe was not found.
+            exit /b 1
+          )
+
+          echo.
+          echo FFmpeg assets found:
+          dir assets\ffmpeg.exe
+          dir assets\ffprobe.exe
+
+      # ==================================================
+      # PYTHON
+      # ==================================================
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          architecture: "x64"
 
-      - name: Install dependencies
-        shell: pwsh
+      # ==================================================
+      # PYTHON DEPENDENCIES
+      # ==================================================
+
+      - name: Install build dependencies
+        shell: cmd
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller
+          python -m pip install pyinstaller
 
-      - name: Build executable
-        shell: pwsh
+      # ==================================================
+      # BUILD
+      # ==================================================
+
+      - name: Build FamilySafeCutter
+        shell: cmd
         run: |
-          pyinstaller `
-            --onefile `
-            --windowed `
-            --name "FamilySafeCutter" `
-            .\FamilySafeCutterV4.py
+          pyinstaller ^
+            --clean ^
+            --noconfirm ^
+            --onedir ^
+            --windowed ^
+            --name FamilySafeCutter ^
+            --add-data "assets;assets" ^
+            FamilySafeCutterV4.py
+
+      # ==================================================
+      # VERIFY PYINSTALLER OUTPUT
+      # ==================================================
+
+      - name: Verify application build
+        shell: cmd
+        run: |
+
+          echo Checking executable...
+
+          if not exist "dist\FamilySafeCutter\FamilySafeCutter.exe" (
+            echo ERROR: FamilySafeCutter.exe was not created.
+            exit /b 1
+          )
+
+          echo.
+          echo Checking bundled FFmpeg...
+
+          if not exist "dist\FamilySafeCutter\_internal\assets\ffmpeg.exe" (
+            echo ERROR: Bundled ffmpeg.exe was not found.
+            exit /b 1
+          )
+
+          echo.
+          echo Checking bundled FFprobe...
+
+          if not exist "dist\FamilySafeCutter\_internal\assets\ffprobe.exe" (
+            echo ERROR: Bundled ffprobe.exe was not found.
+            exit /b 1
+          )
+
+          echo.
+          echo ==========================================
+          echo BUILD VERIFICATION SUCCESSFUL
+          echo ==========================================
+
+          echo.
+          echo Application:
+          dir "dist\FamilySafeCutter\FamilySafeCutter.exe"
+
+          echo.
+          echo FFmpeg:
+          dir "dist\FamilySafeCutter\_internal\assets\ffmpeg.exe"
+
+          echo.
+          echo FFprobe:
+          dir "dist\FamilySafeCutter\_internal\assets\ffprobe.exe"
+
+      # ==================================================
+      # CREATE ZIP
+      # ==================================================
+
+      - name: Create release ZIP
+        shell: powershell
+        run: |
+          Compress-Archive `
+            -Path "dist\FamilySafeCutter\*" `
+            -DestinationPath "FamilySafeCutter-Windows-x64.zip" `
+            -CompressionLevel Optimal
+
+      # ==================================================
+      # VERIFY ZIP
+      # ==================================================
+
+      - name: Verify release ZIP
+        shell: powershell
+        run: |
+          if (!(Test-Path "FamilySafeCutter-Windows-x64.zip")) {
+            Write-Error "Release ZIP was not created."
+            exit 1
+          }
+
+          $size = (Get-Item "FamilySafeCutter-Windows-x64.zip").Length
+
+          Write-Host "Release ZIP created successfully."
+          Write-Host "Size: $size bytes"
+
+      # ==================================================
+      # UPLOAD CI ARTIFACT
+      # ==================================================
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FamilySafeCutter-Windows-x64
+          path: FamilySafeCutter-Windows-x64.zip
+          if-no-files-found: error
+
+      # ==================================================
+      # GITHUB RELEASE
+      # ==================================================
 
       - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/FamilySafeCutter.exe
+          files: FamilySafeCutter-Windows-x64.zip
           generate_release_notes: true
+          fail_on_unmatched_files: true
